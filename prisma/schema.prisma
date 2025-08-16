@@ -10,19 +10,198 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Post {
-    id        Int      @id @default(autoincrement())
-    name      String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-
-    createdBy   User   @relation(fields: [createdById], references: [id])
-    createdById String
-
-    @@index([name])
+// User model - extends existing NextAuth model
+model User {
+    id            String    @id @default(cuid())
+    name          String?
+    email         String?   @unique
+    emailVerified DateTime?
+    image         String?
+    
+    // NextAuth relationships
+    accounts      Account[]
+    sessions      Session[]
+    
+    // Expense management relationships
+    organizationMemberships OrganizationMember[]
+    userSpecificPolicies   Policy[] @relation("UserSpecificPolicies")
+    expenses               Expense[]
+    policyApplications     PolicyApplication[]
+    
+    createdAt     DateTime  @default(now())
+    updatedAt     DateTime  @updatedAt
 }
 
-// Necessary for Next auth
+// Organization model for multi-tenancy
+model Organization {
+    id          String   @id @default(cuid())
+    name        String
+    description String?
+    slug        String   @unique // URL-friendly identifier
+    
+    // Relationships
+    members     OrganizationMember[]
+    categories  ExpenseCategory[]
+    policies    Policy[] @relation("OrganizationPolicies")
+    expenses    Expense[]
+    
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+    
+    @@index([slug])
+}
+
+// Organization membership with roles
+model OrganizationMember {
+    id             String   @id @default(cuid())
+    userId         String
+    organizationId String
+    role           UserRole @default(MEMBER)
+    joinedAt       DateTime @default(now())
+    
+    // Relationships
+    user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+    organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    
+    @@unique([userId, organizationId])
+    @@index([userId])
+    @@index([organizationId])
+}
+
+// User roles within organizations
+enum UserRole {
+    ADMIN
+    MEMBER
+}
+
+// Expense categories (organization-scoped)
+model ExpenseCategory {
+    id             String   @id @default(cuid())
+    name           String
+    description    String?
+    organizationId String
+    
+    // Relationships
+    organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    policies     Policy[]
+    expenses    Expense[]
+    
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @updatedAt
+    
+    @@unique([organizationId, name]) // Prevent duplicate names within org
+    @@index([organizationId])
+}
+
+// Policy model for expense rules
+model Policy {
+    id             String       @id @default(cuid())
+    name           String
+    description    String?
+    organizationId String
+    categoryId     String
+    userId         String?      // null = organization-wide, non-null = user-specific
+    
+    // Policy rules
+    maxAmount      Decimal      @db.Decimal(10, 2)
+    period         PolicyPeriod
+    requiresReview Boolean      @default(true)
+    
+    // Relationships
+    organization Organization @relation("OrganizationPolicies", fields: [organizationId], references: [id], onDelete: Cascade)
+    category     ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+    user         User?         @relation("UserSpecificPolicies", fields: [userId], references: [id], onDelete: Cascade)
+    policyApplications PolicyApplication[]
+    
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+    
+    @@index([organizationId, categoryId, userId])
+    @@index([userId])
+}
+
+// Policy time periods
+enum PolicyPeriod {
+    DAILY
+    WEEKLY
+    MONTHLY
+    YEARLY
+}
+
+// Expense model
+model Expense {
+    id             String        @id @default(cuid())
+    amount         Decimal       @db.Decimal(10, 2)
+    description    String
+    date           DateTime
+    categoryId     String
+    userId         String
+    organizationId String
+    status         ExpenseStatus @default(SUBMITTED)
+    
+    // Review information
+    reviewedBy     String?
+    reviewedAt     DateTime?
+    reviewComment  String?
+    
+    // Relationships
+    category          ExpenseCategory    @relation(fields: [categoryId], references: [id])
+    user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+    organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    policyApplications PolicyApplication[]
+    
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    
+    @@index([userId])
+    @@index([organizationId])
+    @@index([categoryId])
+    @@index([status])
+    @@index([date])
+}
+
+// Expense status
+enum ExpenseStatus {
+    SUBMITTED
+    APPROVED
+    REJECTED
+    UNDER_REVIEW
+}
+
+// Policy application audit trail
+model PolicyApplication {
+    id             String   @id @default(cuid())
+    expenseId      String
+    policyId       String
+    userId         String
+    
+    // Application details
+    appliedAt      DateTime @default(now())
+    decision       PolicyDecision
+    reason         String?
+    amountChecked  Decimal @db.Decimal(10, 2)
+    periodStart    DateTime
+    periodEnd      DateTime
+    
+    // Relationships
+    expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+    policy  Policy  @relation(fields: [policyId], references: [id], onDelete: Cascade)
+    user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    
+    @@index([expenseId])
+    @@index([policyId])
+    @@index([userId])
+    @@index([appliedAt])
+}
+
+// Policy decision types
+enum PolicyDecision {
+    APPROVED
+    REJECTED
+    REQUIRES_REVIEW
+}
+
+// NextAuth models (keep existing)
 model Account {
     id                       String  @id @default(cuid())
     userId                   String
@@ -48,17 +227,6 @@ model Session {
     userId       String
     expires      DateTime
     user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model User {
-    id            String    @id @default(cuid())
-    name          String?
-    email         String?   @unique
-    emailVerified DateTime?
-    image         String?
-    accounts      Account[]
-    sessions      Session[]
-    posts         Post[]
 }
 
 model VerificationToken {

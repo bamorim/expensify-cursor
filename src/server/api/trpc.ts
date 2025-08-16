@@ -9,7 +9,7 @@
 
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
-import { ZodError } from "zod";
+import { ZodError, z } from "zod";
 
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
@@ -128,6 +128,70 @@ export const protectedProcedure = t.procedure
       ctx: {
         // infers the `session` as non-nullable
         session: { ...ctx.session, user: ctx.session.user },
+      },
+    });
+  });
+
+/**
+ * Admin-only procedure
+ *
+ * This procedure requires the user to be an admin in the specified organization.
+ * Use this for operations that only admins should perform.
+ */
+export const adminProcedure = protectedProcedure
+  .input(z.object({ organizationId: z.string().cuid() }))
+  .use(async ({ ctx, input, next }) => {
+    const membership = await ctx.db.organizationMember.findFirst({
+      where: {
+        userId: ctx.session.user.id,
+        organizationId: input.organizationId,
+        role: "ADMIN",
+      },
+    });
+
+    if (!membership) {
+      throw new TRPCError({ 
+        code: "FORBIDDEN", 
+        message: "Admin access required" 
+      });
+    }
+
+    return next({
+      ctx: {
+        ...ctx,
+        organizationId: input.organizationId,
+      },
+    });
+  });
+
+/**
+ * Organization member procedure
+ *
+ * This procedure requires the user to be a member of the specified organization.
+ * Use this for operations that any organization member can perform.
+ */
+export const memberProcedure = protectedProcedure
+  .input(z.object({ organizationId: z.string().cuid() }))
+  .use(async ({ ctx, input, next }) => {
+    const membership = await ctx.db.organizationMember.findFirst({
+      where: {
+        userId: ctx.session.user.id,
+        organizationId: input.organizationId,
+      },
+    });
+
+    if (!membership) {
+      throw new TRPCError({ 
+        code: "FORBIDDEN", 
+        message: "Organization membership required" 
+      });
+    }
+
+    return next({
+      ctx: {
+        ...ctx,
+        organizationId: input.organizationId,
+        userRole: membership.role,
       },
     });
   });
