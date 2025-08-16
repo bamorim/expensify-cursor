@@ -39,7 +39,9 @@ export const memberRouter = createTRPCRouter({
           });
 
           if (isSelf) {
-            throw new Error("Cannot remove the last admin from the organization");
+            throw new Error(
+              "Cannot remove the last admin from the organization",
+            );
           }
         }
       }
@@ -121,7 +123,7 @@ export const memberRouter = createTRPCRouter({
             },
           },
         },
-        orderBy: { joinedAt: 'desc' },
+        orderBy: { joinedAt: "desc" },
       });
     }),
 });

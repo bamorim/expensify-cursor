@@ -150,9 +150,9 @@ export const adminProcedure = protectedProcedure
     });
 
     if (!membership) {
-      throw new TRPCError({ 
-        code: "FORBIDDEN", 
-        message: "Admin access required" 
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Admin access required",
       });
     }
 
@@ -181,9 +181,9 @@ export const memberProcedure = protectedProcedure
     });
 
     if (!membership) {
-      throw new TRPCError({ 
-        code: "FORBIDDEN", 
-        message: "Organization membership required" 
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Organization membership required",
       });
     }
 

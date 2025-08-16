@@ -16,7 +16,9 @@ export function CreateOrganizationForm() {
       router.push("/dashboard");
     },
     onError: (error) => {
-      setError(error.message || "Failed to create organization. Please try again.");
+      setError(
+        error.message || "Failed to create organization. Please try again.",
+      );
     },
   });
 
@@ -30,7 +32,7 @@ export function CreateOrganizationForm() {
         name: name.trim(),
         description: description.trim() || undefined,
       });
-    } catch (err) {
+    } catch {
       // Error is handled by onError callback
     } finally {
       setIsSubmitting(false);
@@ -41,7 +43,10 @@ export function CreateOrganizationForm() {
     <div className="w-full">
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-white mb-2">
+          <label
+            htmlFor="name"
+            className="mb-2 block text-sm font-medium text-white"
+          >
             Organization Name *
           </label>
           <input
@@ -50,13 +55,16 @@ export function CreateOrganizationForm() {
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg bg-white/10 px-4 py-3 text-white placeholder-white/50 border border-white/20 focus:border-[hsl(280,100%,70%)] focus:outline-none focus:ring-2 focus:ring-[hsl(280,100%,70%)]/20"
+            className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-white/50 focus:border-[hsl(280,100%,70%)] focus:ring-2 focus:ring-[hsl(280,100%,70%)]/20 focus:outline-none"
             placeholder="Enter organization name"
           />
         </div>
 
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-white mb-2">
+          <label
+            htmlFor="description"
+            className="mb-2 block text-sm font-medium text-white"
+          >
             Description (Optional)
           </label>
           <textarea
@@ -64,13 +72,13 @@ export function CreateOrganizationForm() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
-            className="w-full rounded-lg bg-white/10 px-4 py-3 text-white placeholder-white/50 border border-white/20 focus:border-[hsl(280,100%,70%)] focus:outline-none focus:ring-2 focus:ring-[hsl(280,100%,70%)]/20"
+            className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-white/50 focus:border-[hsl(280,100%,70%)] focus:ring-2 focus:ring-[hsl(280,100%,70%)]/20 focus:outline-none"
             placeholder="Describe your organization"
           />
         </div>
 
         {error && (
-          <div className="text-red-400 text-sm bg-red-400/10 p-3 rounded-lg">
+          <div className="rounded-lg bg-red-400/10 p-3 text-sm text-red-400">
             {error}
           </div>
         )}
@@ -78,14 +86,14 @@ export function CreateOrganizationForm() {
         <button
           type="submit"
           disabled={isSubmitting || !name.trim()}
-          className="w-full rounded-lg bg-[hsl(280,100%,70%)] px-6 py-3 font-semibold text-black transition hover:bg-[hsl(280,100%,60%)] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full rounded-lg bg-[hsl(280,100%,70%)] px-6 py-3 font-semibold text-black transition hover:bg-[hsl(280,100%,60%)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSubmitting ? "Creating..." : "Create Organization"}
         </button>
       </form>
 
       <div className="mt-6 text-center text-sm text-white/60">
-        <p>You'll automatically become an admin of your new organization</p>
+        <p>{"You'll automatically become an admin of your new organization"}</p>
       </div>
     </div>
   );

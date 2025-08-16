@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { organizationRouter } from "./organization";
-import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { faker } from "@faker-js/faker";
 
@@ -44,9 +43,9 @@ describe("OrganizationRouter", () => {
     it("should create an organization successfully", async () => {
       const { caller, user } = await createTestContext();
 
-      const result = await caller.create({ 
+      const result = await caller.create({
         name: "Test Organization",
-        description: "A test organization"
+        description: "A test organization",
       });
 
       expect(result.name).toEqual("Test Organization");
@@ -78,8 +77,8 @@ describe("OrganizationRouter", () => {
     it("should create organization with minimal data", async () => {
       const { caller } = await createTestContext();
 
-      const result = await caller.create({ 
-        name: "Minimal Org"
+      const result = await caller.create({
+        name: "Minimal Org",
       });
 
       expect(result.name).toEqual("Minimal Org");
@@ -90,8 +89,8 @@ describe("OrganizationRouter", () => {
     it("should generate slug from organization name", async () => {
       const { caller } = await createTestContext();
 
-      const result = await caller.create({ 
-        name: "Complex Organization Name 123"
+      const result = await caller.create({
+        name: "Complex Organization Name 123",
       });
 
       expect(result.slug).toEqual("complex-organization-name-123");
@@ -146,7 +145,7 @@ describe("OrganizationRouter", () => {
       });
 
       await expect(
-        caller.getById({ organizationId: organization.id })
+        caller.getById({ organizationId: organization.id }),
       ).rejects.toThrow("Organization membership required");
     });
   });

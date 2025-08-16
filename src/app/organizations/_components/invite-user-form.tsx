@@ -8,7 +8,10 @@ interface InviteUserFormProps {
   onSuccess?: () => void;
 }
 
-export function InviteUserForm({ organizationId, onSuccess }: InviteUserFormProps) {
+export function InviteUserForm({
+  organizationId,
+  onSuccess,
+}: InviteUserFormProps) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"ADMIN" | "MEMBER">("MEMBER");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,7 +43,7 @@ export function InviteUserForm({ organizationId, onSuccess }: InviteUserFormProp
         email: email.trim(),
         role,
       });
-    } catch (err) {
+    } catch {
       // Error is handled by onError callback
     } finally {
       setIsSubmitting(false);
@@ -51,7 +54,10 @@ export function InviteUserForm({ organizationId, onSuccess }: InviteUserFormProp
     <div className="w-full">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
+          <label
+            htmlFor="email"
+            className="mb-2 block text-sm font-medium text-white"
+          >
             Email Address *
           </label>
           <input
@@ -60,20 +66,23 @@ export function InviteUserForm({ organizationId, onSuccess }: InviteUserFormProp
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg bg-white/10 px-4 py-3 text-white placeholder-white/50 border border-white/20 focus:border-[hsl(280,100%,70%)] focus:outline-none focus:ring-2 focus:ring-[hsl(280,100%,70%)]/20"
+            className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-white/50 focus:border-[hsl(280,100%,70%)] focus:ring-2 focus:ring-[hsl(280,100%,70%)]/20 focus:outline-none"
             placeholder="Enter email address"
           />
         </div>
 
         <div>
-          <label htmlFor="role" className="block text-sm font-medium text-white mb-2">
+          <label
+            htmlFor="role"
+            className="mb-2 block text-sm font-medium text-white"
+          >
             Role
           </label>
           <select
             id="role"
             value={role}
             onChange={(e) => setRole(e.target.value as "ADMIN" | "MEMBER")}
-            className="w-full rounded-lg bg-white/10 px-4 py-3 text-white border border-white/20 focus:border-[hsl(280,100%,70%)] focus:outline-none focus:ring-2 focus:ring-[hsl(280,100%,70%)]/20"
+            className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white focus:border-[hsl(280,100%,70%)] focus:ring-2 focus:ring-[hsl(280,100%,70%)]/20 focus:outline-none"
           >
             <option value="MEMBER">Member</option>
             <option value="ADMIN">Admin</option>
@@ -81,13 +90,13 @@ export function InviteUserForm({ organizationId, onSuccess }: InviteUserFormProp
         </div>
 
         {error && (
-          <div className="text-red-400 text-sm bg-red-400/10 p-3 rounded-lg">
+          <div className="rounded-lg bg-red-400/10 p-3 text-sm text-red-400">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="text-green-400 text-sm bg-green-400/10 p-3 rounded-lg">
+          <div className="rounded-lg bg-green-400/10 p-3 text-sm text-green-400">
             {success}
           </div>
         )}
@@ -95,7 +104,7 @@ export function InviteUserForm({ organizationId, onSuccess }: InviteUserFormProp
         <button
           type="submit"
           disabled={isSubmitting || !email.trim()}
-          className="w-full rounded-lg bg-[hsl(280,100%,70%)] px-6 py-3 font-semibold text-black transition hover:bg-[hsl(280,100%,60%)] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full rounded-lg bg-[hsl(280,100%,70%)] px-6 py-3 font-semibold text-black transition hover:bg-[hsl(280,100%,60%)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSubmitting ? "Sending..." : "Send Invitation"}
         </button>

@@ -1,0 +1,700 @@
+---
+globs: **/*.test.ts
+alwaysApply: false
+---
+# Testing Patterns for Expensify Cursor
+
+## Overview
+
+This document captures the testing patterns and conventions used in the Expensify Cursor project to ensure consistency and prevent common mistakes.
+
+## Test File Structure
+
+### File Naming
+- Test files should be named `{component}.test.ts` for server-side tests
+- Test files should be named `{component}.test.tsx` for React component tests
+- Place test files alongside the source files they test
+
+### Test Organization
+```typescript
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { componentRouter } from "./component";
+import { auth } from "~/server/auth";
+import { db } from "~/server/db";
+import { faker } from "@faker-js/faker";
+
+// Mock the database to use the transactional testing wrapper
+vi.mock("~/server/db");
+
+// Mock the auth module
+vi.mock("~/server/auth", () => ({
+  auth: vi.fn(),
+}));
+
+describe("ComponentRouter", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Test groups...
+});
+```
+
+## Database Testing Pattern
+
+### DO NOT Mock Individual Database Calls
+❌ **WRONG** - Don't do this:
+```typescript
+const mockDb = {
+  user: {
+    create: vi.fn(),
+    findMany: vi.fn(),
+    // ...
+  },
+};
+```
+
+### DO Use Transactional Testing Wrapper
+✅ **CORRECT** - Do this:
+```typescript
+// Mock the database to use the transactional testing wrapper
+vi.mock("~/server/db");
+
+// Use the actual db instance in tests
+const user = await db.user.create({
+  data: { name: "Test User", email: faker.internet.email() }
+});
+```
+
+## Test Context Creation
+
+### For Server-Side Tests
+Create test contexts using the router's `createCaller` method:
+
+```typescript
+// Helper function to create admin test context
+async function createAdminTestContext() {
+  const user = await db.user.create({
+    data: {
+      name: "Admin User",
+      email: faker.internet.email(),
+    },
+  });
+
+  const organization = await db.organization.create({
+    data: {
+      name: "Test Organization",
+      slug: "test-org",
+    },
+  });
+
+  await db.organizationMember.create({
+    data: {
+      userId: user.id,
+      organizationId: organization.id,
+      role: "ADMIN",
+    },
+  });
+
+  const mockSession = {
+    user,
+    expires: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+  };
+
+  const caller = componentRouter.createCaller({
+    db: db,
+    session: mockSession,
+    headers: new Headers(),
+  });
+
+  return { caller, user, organization, mockSession };
+}
+```
+
+### For Different User Roles
+Create separate helper functions for different user roles:
+
+```typescript
+// Helper function to create member test context
+async function createMemberTestContext() {
+  // Similar to admin context but with MEMBER role
+  // ...
+}
+```
+
+## Test Structure
+
+### Test Groups
+Organize tests by functionality:
+
+```typescript
+describe("ComponentRouter", () => {
+  describe("create", () => {
+    it("should create successfully", async () => {
+      // Test implementation
+    });
+
+    it("should reject invalid input", async () => {
+      // Test implementation
+    });
+  });
+
+  describe("getAll", () => {
+    it("should return all items", async () => {
+      // Test implementation
+    });
+  });
+
+  describe("authorization", () => {
+    it("should require admin access", async () => {
+      // Test implementation
+    });
+  });
+});
+```
+
+### Test Implementation Pattern
+```typescript
+it("should create successfully", async () => {
+  const { caller, organization } = await createAdminTestContext();
+
+  const result = await caller.create({
+    organizationId: organization.id,
+    name: "Test Item",
+  });
+
+  expect(result.name).toEqual("Test Item");
+
+  // Verify in database
+  const item = await db.item.findUnique({
+    where: { id: result.id },
+  });
+
+  expect(item).toBeDefined();
+  expect(item?.name).toEqual("Test Item");
+});
+```
+
+## Authorization Testing
+
+### Test Admin-Only Operations
+```typescript
+it("should require admin access for create operation", async () => {
+  const { caller, organization } = await createMemberTestContext();
+
+  await expect(
+    caller.create({
+      organizationId: organization.id,
+      name: "Test Item",
+    })
+  ).rejects.toThrow("Admin access required");
+});
+```
+
+### Test Member Access
+```typescript
+it("should allow member access for read operations", async () => {
+  const { caller, organization } = await createMemberTestContext();
+
+  // Create item as admin first
+  const adminContext = await createAdminTestContext();
+  await adminContext.caller.create({
+    organizationId: organization.id,
+    name: "Test Item",
+  });
+
+  // Member should be able to read
+  const result = await caller.getAll({
+    organizationId: organization.id,
+  });
+
+  expect(result).toHaveLength(1);
+});
+```
+
+## Data Isolation Testing
+
+### Test Multi-Tenancy
+```typescript
+it("should not return data from other organizations", async () => {
+  const { caller: caller1, organization: org1 } = await createAdminTestContext();
+  const { caller: caller2, organization: org2 } = await createAdminTestContext();
+
+  // Create data in first organization
+  await caller1.create({
+    organizationId: org1.id,
+    name: "Item 1",
+  });
+
+  // Create data in second organization
+  await caller2.create({
+    organizationId: org2.id,
+    name: "Item 2",
+  });
+
+  // Check isolation
+  const org1Items = await caller1.getAll({ organizationId: org1.id });
+  const org2Items = await caller2.getAll({ organizationId: org2.id });
+
+  expect(org1Items).toHaveLength(1);
+  expect(org2Items).toHaveLength(1);
+  expect(org1Items[0]?.name).toEqual("Item 1");
+  expect(org2Items[0]?.name).toEqual("Item 2");
+});
+```
+
+## Error Testing
+
+### Test Validation Errors
+```typescript
+it("should reject creation if name already exists", async () => {
+  const { caller, organization } = await createAdminTestContext();
+
+  // Create first item
+  await caller.create({
+    organizationId: organization.id,
+    name: "Duplicate Name",
+  });
+
+  // Try to create another with same name
+  await expect(
+    caller.create({
+      organizationId: organization.id,
+      name: "Duplicate Name",
+    })
+  ).rejects.toThrow("A item with this name already exists");
+});
+```
+
+### Test Business Rule Violations
+```typescript
+it("should reject deletion if item has dependencies", async () => {
+  const { caller, organization } = await createAdminTestContext();
+
+  const item = await caller.create({
+    organizationId: organization.id,
+    name: "Test Item",
+  });
+
+  // Create dependency
+  await db.dependency.create({
+    data: {
+      itemId: item.id,
+      // ... other required fields
+    },
+  });
+
+  await expect(
+    caller.delete({
+      organizationId: organization.id,
+      itemId: item.id,
+    })
+  ).rejects.toThrow("Cannot delete item that has dependencies");
+});
+```
+
+## Test Utilities
+
+### Using Faker
+```typescript
+import { faker } from "@faker-js/faker";
+
+// Generate unique test data
+const user = await db.user.create({
+  data: {
+    name: faker.person.fullName(),
+    email: faker.internet.email(),
+  },
+});
+```
+
+### Cleanup
+```typescript
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+```
+
+## Common Mistakes to Avoid
+
+1. **Don't mock individual database methods** - Use the transactional testing wrapper
+2. **Don't test implementation details** - Test behavior and outcomes
+3. **Don't forget to test authorization** - Always test role-based access
+4. **Don't forget to test data isolation** - Verify multi-tenant behavior
+5. **Don't use hardcoded IDs** - Generate test data dynamically
+6. **Don't test validation at the test level** - Let the router handle it
+
+## Running Tests
+
+### Reset Test Database
+```bash
+pnpm test:reset
+```
+
+### Run Specific Test File
+```bash
+pnpm test src/server/api/routers/component.test.ts
+```
+
+### Run All Tests
+```bash
+pnpm test
+```
+
+## Summary
+
+- Use `vi.mock("~/server/db")` to mock the database module
+- Use the actual `db` instance in tests (transactional wrapper)
+- Create test contexts using `router.createCaller()`
+- Test both success and failure scenarios
+- Always test authorization and data isolation
+- Use faker for generating unique test data
+- Follow the established patterns in existing test files
+# Testing Patterns for Expensify Cursor
+
+## Overview
+
+This document captures the testing patterns and conventions used in the Expensify Cursor project to ensure consistency and prevent common mistakes.
+
+## Test File Structure
+
+### File Naming
+- Test files should be named `{component}.test.ts` for server-side tests
+- Test files should be named `{component}.test.tsx` for React component tests
+- Place test files alongside the source files they test
+
+### Test Organization
+```typescript
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { componentRouter } from "./component";
+import { auth } from "~/server/auth";
+import { db } from "~/server/db";
+import { faker } from "@faker-js/faker";
+
+// Mock the database to use the transactional testing wrapper
+vi.mock("~/server/db");
+
+// Mock the auth module
+vi.mock("~/server/auth", () => ({
+  auth: vi.fn(),
+}));
+
+describe("ComponentRouter", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Test groups...
+});
+```
+
+## Database Testing Pattern
+
+### DO NOT Mock Individual Database Calls
+❌ **WRONG** - Don't do this:
+```typescript
+const mockDb = {
+  user: {
+    create: vi.fn(),
+    findMany: vi.fn(),
+    // ...
+  },
+};
+```
+
+### DO Use Transactional Testing Wrapper
+✅ **CORRECT** - Do this:
+```typescript
+// Mock the database to use the transactional testing wrapper
+vi.mock("~/server/db");
+
+// Use the actual db instance in tests
+const user = await db.user.create({
+  data: { name: "Test User", email: faker.internet.email() }
+});
+```
+
+## Test Context Creation
+
+### For Server-Side Tests
+Create test contexts using the router's `createCaller` method:
+
+```typescript
+// Helper function to create admin test context
+async function createAdminTestContext() {
+  const user = await db.user.create({
+    data: {
+      name: "Admin User",
+      email: faker.internet.email(),
+    },
+  });
+
+  const organization = await db.organization.create({
+    data: {
+      name: "Test Organization",
+      slug: "test-org",
+    },
+  });
+
+  await db.organizationMember.create({
+    data: {
+      userId: user.id,
+      organizationId: organization.id,
+      role: "ADMIN",
+    },
+  });
+
+  const mockSession = {
+    user,
+    expires: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+  };
+
+  const caller = componentRouter.createCaller({
+    db: db,
+    session: mockSession,
+    headers: new Headers(),
+  });
+
+  return { caller, user, organization, mockSession };
+}
+```
+
+### For Different User Roles
+Create separate helper functions for different user roles:
+
+```typescript
+// Helper function to create member test context
+async function createMemberTestContext() {
+  // Similar to admin context but with MEMBER role
+  // ...
+}
+```
+
+## Test Structure
+
+### Test Groups
+Organize tests by functionality:
+
+```typescript
+describe("ComponentRouter", () => {
+  describe("create", () => {
+    it("should create successfully", async () => {
+      // Test implementation
+    });
+
+    it("should reject invalid input", async () => {
+      // Test implementation
+    });
+  });
+
+  describe("getAll", () => {
+    it("should return all items", async () => {
+      // Test implementation
+    });
+  });
+
+  describe("authorization", () => {
+    it("should require admin access", async () => {
+      // Test implementation
+    });
+  });
+});
+```
+
+### Test Implementation Pattern
+```typescript
+it("should create successfully", async () => {
+  const { caller, organization } = await createAdminTestContext();
+
+  const result = await caller.create({
+    organizationId: organization.id,
+    name: "Test Item",
+  });
+
+  expect(result.name).toEqual("Test Item");
+
+  // Verify in database
+  const item = await db.item.findUnique({
+    where: { id: result.id },
+  });
+
+  expect(item).toBeDefined();
+  expect(item?.name).toEqual("Test Item");
+});
+```
+
+## Authorization Testing
+
+### Test Admin-Only Operations
+```typescript
+it("should require admin access for create operation", async () => {
+  const { caller, organization } = await createMemberTestContext();
+
+  await expect(
+    caller.create({
+      organizationId: organization.id,
+      name: "Test Item",
+    })
+  ).rejects.toThrow("Admin access required");
+});
+```
+
+### Test Member Access
+```typescript
+it("should allow member access for read operations", async () => {
+  const { caller, organization } = await createMemberTestContext();
+
+  // Create item as admin first
+  const adminContext = await createAdminTestContext();
+  await adminContext.caller.create({
+    organizationId: organization.id,
+    name: "Test Item",
+  });
+
+  // Member should be able to read
+  const result = await caller.getAll({
+    organizationId: organization.id,
+  });
+
+  expect(result).toHaveLength(1);
+});
+```
+
+## Data Isolation Testing
+
+### Test Multi-Tenancy
+```typescript
+it("should not return data from other organizations", async () => {
+  const { caller: caller1, organization: org1 } = await createAdminTestContext();
+  const { caller: caller2, organization: org2 } = await createAdminTestContext();
+
+  // Create data in first organization
+  await caller1.create({
+    organizationId: org1.id,
+    name: "Item 1",
+  });
+
+  // Create data in second organization
+  await caller2.create({
+    organizationId: org2.id,
+    name: "Item 2",
+  });
+
+  // Check isolation
+  const org1Items = await caller1.getAll({ organizationId: org1.id });
+  const org2Items = await caller2.getAll({ organizationId: org2.id });
+
+  expect(org1Items).toHaveLength(1);
+  expect(org2Items).toHaveLength(1);
+  expect(org1Items[0]?.name).toEqual("Item 1");
+  expect(org2Items[0]?.name).toEqual("Item 2");
+});
+```
+
+## Error Testing
+
+### Test Validation Errors
+```typescript
+it("should reject creation if name already exists", async () => {
+  const { caller, organization } = await createAdminTestContext();
+
+  // Create first item
+  await caller.create({
+    organizationId: organization.id,
+    name: "Duplicate Name",
+  });
+
+  // Try to create another with same name
+  await expect(
+    caller.create({
+      organizationId: organization.id,
+      name: "Duplicate Name",
+    })
+  ).rejects.toThrow("A item with this name already exists");
+});
+```
+
+### Test Business Rule Violations
+```typescript
+it("should reject deletion if item has dependencies", async () => {
+  const { caller, organization } = await createAdminTestContext();
+
+  const item = await caller.create({
+    organizationId: organization.id,
+    name: "Test Item",
+  });
+
+  // Create dependency
+  await db.dependency.create({
+    data: {
+      itemId: item.id,
+      // ... other required fields
+    },
+  });
+
+  await expect(
+    caller.delete({
+      organizationId: organization.id,
+      itemId: item.id,
+    })
+  ).rejects.toThrow("Cannot delete item that has dependencies");
+});
+```
+
+## Test Utilities
+
+### Using Faker
+```typescript
+import { faker } from "@faker-js/faker";
+
+// Generate unique test data
+const user = await db.user.create({
+  data: {
+    name: faker.person.fullName(),
+    email: faker.internet.email(),
+  },
+});
+```
+
+### Cleanup
+```typescript
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+```
+
+## Common Mistakes to Avoid
+
+1. **Don't mock individual database methods** - Use the transactional testing wrapper
+2. **Don't test implementation details** - Test behavior and outcomes
+3. **Don't forget to test authorization** - Always test role-based access
+4. **Don't forget to test data isolation** - Verify multi-tenant behavior
+5. **Don't use hardcoded IDs** - Generate test data dynamically
+6. **Don't test validation at the test level** - Let the router handle it
+
+## Running Tests
+
+### Reset Test Database
+```bash
+pnpm test:reset
+```
+
+### Run Specific Test File
+```bash
+pnpm test src/server/api/routers/component.test.ts
+```
+
+### Run All Tests
+```bash
+pnpm test
+```
+
+## Summary
+
+- Use `vi.mock("~/server/db")` to mock the database module
+- Use the actual `db` instance in tests (transactional wrapper)
+- Create test contexts using `router.createCaller()`
+- Test both success and failure scenarios
+- Always test authorization and data isolation
+- Use faker for generating unique test data
+- Follow the established patterns in existing test files

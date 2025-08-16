@@ -4,7 +4,7 @@ import { CreateOrganizationForm } from "./_components/create-organization-form";
 
 export default async function OrganizationsPage() {
   const session = await auth();
-  
+
   if (!session?.user) {
     redirect("/api/auth/signin");
   }
@@ -15,9 +15,10 @@ export default async function OrganizationsPage() {
         <h1 className="text-4xl font-extrabold tracking-tight">
           <span className="text-[hsl(280,100%,70%)]">Organizations</span>
         </h1>
-        
-        <div className="text-center text-lg text-white/80 mb-8">
-          Create a new organization or join an existing one to start managing expenses
+
+        <div className="mb-8 text-center text-lg text-white/80">
+          Create a new organization or join an existing one to start managing
+          expenses
         </div>
 
         <div className="w-full max-w-md">

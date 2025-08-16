@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { memberRouter } from "./member";
-import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { faker } from "@faker-js/faker";
 
@@ -104,7 +103,7 @@ describe("MemberRouter", () => {
           organizationId: organization.id,
           userId: user.id,
           role: "MEMBER",
-        })
+        }),
       ).rejects.toThrow("Cannot remove the last admin from the organization");
 
       // Verify role wasn't changed
@@ -204,7 +203,7 @@ describe("MemberRouter", () => {
         caller.remove({
           organizationId: organization.id,
           userId: user.id,
-        })
+        }),
       ).rejects.toThrow("Cannot remove the last admin from the organization");
 
       // Verify admin wasn't removed

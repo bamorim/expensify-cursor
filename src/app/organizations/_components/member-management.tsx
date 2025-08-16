@@ -22,11 +22,11 @@ interface MemberManagementProps {
   onMemberUpdate: () => void;
 }
 
-export function MemberManagement({ 
-  organizationId, 
-  members, 
-  currentUserId, 
-  onMemberUpdate 
+export function MemberManagement({
+  organizationId,
+  members,
+  currentUserId,
+  onMemberUpdate,
 }: MemberManagementProps) {
   const [editingMember, setEditingMember] = useState<string | null>(null);
   const [newRole, setNewRole] = useState<"ADMIN" | "MEMBER">("MEMBER");
@@ -57,13 +57,17 @@ export function MemberManagement({
         userId,
         role: newRole,
       });
-    } catch (err) {
+    } catch {
       // Error is handled by onError callback
     }
   };
 
   const handleRemoveMember = async (userId: string, userName: string) => {
-    if (!confirm(`Are you sure you want to remove ${userName} from the organization?`)) {
+    if (
+      !confirm(
+        `Are you sure you want to remove ${userName} from the organization?`,
+      )
+    ) {
       return;
     }
 
@@ -72,7 +76,7 @@ export function MemberManagement({
         organizationId,
         userId,
       });
-    } catch (err) {
+    } catch {
       // Error is handled by onError callback
     }
   };
@@ -80,48 +84,50 @@ export function MemberManagement({
   const canEditMember = (member: Member) => {
     // Can't edit yourself
     if (member.userId === currentUserId) return false;
-    
+
     // Only admins can edit members
-    const currentMember = members.find(m => m.userId === currentUserId);
+    const currentMember = members.find((m) => m.userId === currentUserId);
     return currentMember?.role === "ADMIN";
   };
 
   const canRemoveMember = (member: Member) => {
     // Can't remove yourself
     if (member.userId === currentUserId) return false;
-    
+
     // Only admins can remove members
-    const currentMember = members.find(m => m.userId === currentUserId);
+    const currentMember = members.find((m) => m.userId === currentUserId);
     return currentMember?.role === "ADMIN";
   };
 
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-white">Members</h3>
-      
+
       <div className="space-y-3">
         {members.map((member) => (
           <div
             key={member.id}
-            className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10"
+            className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 p-4"
           >
             <div className="flex-1">
               <div className="flex items-center space-x-3">
                 <div className="flex-1">
                   <p className="font-medium text-white">
-                    {member.user.name || "Unknown User"}
+                    {member.user.name ?? "Unknown User"}
                   </p>
                   <p className="text-sm text-white/70">{member.user.email}</p>
                   <p className="text-xs text-white/50">
                     Joined: {new Date(member.joinedAt).toLocaleDateString()}
                   </p>
                 </div>
-                
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  member.role === 'ADMIN' 
-                    ? 'bg-blue-500/20 text-blue-300' 
-                    : 'bg-green-500/20 text-green-300'
-                }`}>
+
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    member.role === "ADMIN"
+                      ? "bg-blue-500/20 text-blue-300"
+                      : "bg-green-500/20 text-green-300"
+                  }`}
+                >
                   {member.role}
                 </span>
               </div>
@@ -132,8 +138,10 @@ export function MemberManagement({
                 <div className="flex items-center space-x-2">
                   <select
                     value={newRole}
-                    onChange={(e) => setNewRole(e.target.value as "ADMIN" | "MEMBER")}
-                    className="rounded bg-white/10 px-3 py-1 text-white border border-white/20 text-sm"
+                    onChange={(e) =>
+                      setNewRole(e.target.value as "ADMIN" | "MEMBER")
+                    }
+                    className="rounded border border-white/20 bg-white/10 px-3 py-1 text-sm text-white"
                   >
                     <option value="MEMBER">Member</option>
                     <option value="ADMIN">Admin</option>
@@ -141,13 +149,13 @@ export function MemberManagement({
                   <button
                     onClick={() => handleRoleUpdate(member.userId)}
                     disabled={updateMemberRole.isPending}
-                    className="px-3 py-1 bg-green-500/20 text-green-300 rounded text-sm hover:bg-green-500/30 disabled:opacity-50"
+                    className="rounded bg-green-500/20 px-3 py-1 text-sm text-green-300 hover:bg-green-500/30 disabled:opacity-50"
                   >
                     Save
                   </button>
                   <button
                     onClick={() => setEditingMember(null)}
-                    className="px-3 py-1 bg-gray-500/20 text-gray-300 rounded text-sm hover:bg-gray-500/30"
+                    className="rounded bg-gray-500/20 px-3 py-1 text-sm text-gray-300 hover:bg-gray-500/30"
                   >
                     Cancel
                   </button>
@@ -160,17 +168,22 @@ export function MemberManagement({
                         setEditingMember(member.id);
                         setNewRole(member.role);
                       }}
-                      className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded text-sm hover:bg-blue-500/30"
+                      className="rounded bg-blue-500/20 px-3 py-1 text-sm text-blue-300 hover:bg-blue-500/30"
                     >
                       Edit Role
                     </button>
                   )}
-                  
+
                   {canRemoveMember(member) && (
                     <button
-                      onClick={() => handleRemoveMember(member.userId, member.user.name || "this user")}
+                      onClick={() =>
+                        handleRemoveMember(
+                          member.userId,
+                          member.user.name ?? "this user",
+                        )
+                      }
                       disabled={removeMember.isPending}
-                      className="px-3 py-1 bg-red-500/20 text-red-300 rounded text-sm hover:bg-red-500/30 disabled:opacity-50"
+                      className="rounded bg-red-500/20 px-3 py-1 text-sm text-red-300 hover:bg-red-500/30 disabled:opacity-50"
                     >
                       Remove
                     </button>
@@ -183,7 +196,7 @@ export function MemberManagement({
       </div>
 
       {members.length === 0 && (
-        <div className="text-center py-8">
+        <div className="py-8 text-center">
           <p className="text-white/60">No members found</p>
         </div>
       )}

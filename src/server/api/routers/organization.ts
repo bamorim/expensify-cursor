@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure, memberProcedure, adminProcedure } from "~/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  memberProcedure,
+  adminProcedure,
+} from "~/server/api/trpc";
 
 // Input schemas
 const createOrganizationSchema = z.object({
@@ -30,11 +35,11 @@ export const organizationRouter = createTRPCRouter({
         data: {
           name,
           description,
-          slug: name.toLowerCase().replace(/\s+/g, '-'),
+          slug: name.toLowerCase().replace(/\s+/g, "-"),
           members: {
             create: {
               userId,
-              role: 'ADMIN',
+              role: "ADMIN",
             },
           },
         },
@@ -57,28 +62,27 @@ export const organizationRouter = createTRPCRouter({
     }),
 
   // Get user's organizations
-  getMyOrganizations: protectedProcedure
-    .query(async ({ ctx }) => {
-      const userId = ctx.session.user.id;
+  getMyOrganizations: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
 
-      return ctx.db.organizationMember.findMany({
-        where: { userId },
-        include: {
-          organization: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              slug: true,
-              createdAt: true,
-            },
+    return ctx.db.organizationMember.findMany({
+      where: { userId },
+      include: {
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            slug: true,
+            createdAt: true,
           },
         },
-        orderBy: {
-          joinedAt: 'desc',
-        },
-      });
-    }),
+      },
+      orderBy: {
+        joinedAt: "desc",
+      },
+    });
+  }),
 
   // Get organization by ID (requires membership)
   getById: memberProcedure
@@ -120,7 +124,7 @@ export const organizationRouter = createTRPCRouter({
         data: {
           name,
           description,
-          slug: name.toLowerCase().replace(/\s+/g, '-'),
+          slug: name.toLowerCase().replace(/\s+/g, "-"),
         },
         include: {
           members: {

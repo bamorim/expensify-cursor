@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure, adminProcedure } from "~/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  adminProcedure,
+} from "~/server/api/trpc";
 
 // Input schemas
 const inviteUserSchema = z.object({
@@ -78,7 +82,9 @@ export const invitationRouter = createTRPCRouter({
       });
 
       // TODO: Send email invitation (implement email service later)
-      console.log(`Invitation sent to ${email} for organization ${invitation.organization.name}`);
+      console.log(
+        `Invitation sent to ${email} for organization ${invitation.organization.name}`,
+      );
 
       return invitation;
     }),
@@ -100,7 +106,7 @@ export const invitationRouter = createTRPCRouter({
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
       });
     }),
 
@@ -178,35 +184,34 @@ export const invitationRouter = createTRPCRouter({
     }),
 
   // Get pending invitations for current user
-  getMyInvitations: protectedProcedure
-    .query(async ({ ctx }) => {
-      const userEmail = ctx.session.user.email;
-      
-      if (!userEmail) {
-        return [];
-      }
+  getMyInvitations: protectedProcedure.query(async ({ ctx }) => {
+    const userEmail = ctx.session.user.email;
 
-      return ctx.db.organizationInvitation.findMany({
-        where: {
-          email: userEmail,
-          status: "PENDING",
-        },
-        include: {
-          organization: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-            },
-          },
-          invitedByUser: {
-            select: {
-              name: true,
-              email: true,
-            },
+    if (!userEmail) {
+      return [];
+    }
+
+    return ctx.db.organizationInvitation.findMany({
+      where: {
+        email: userEmail,
+        status: "PENDING",
+      },
+      include: {
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
           },
         },
-        orderBy: { createdAt: 'desc' },
-      });
-    }),
+        invitedByUser: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }),
 });

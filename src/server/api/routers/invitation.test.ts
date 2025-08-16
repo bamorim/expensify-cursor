@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { invitationRouter } from "./invitation";
-import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { faker } from "@faker-js/faker";
 
@@ -128,7 +127,7 @@ describe("InvitationRouter", () => {
           organizationId: organization.id,
           email: "existing@example.com",
           role: "MEMBER",
-        })
+        }),
       ).rejects.toThrow("User is already a member of this organization");
     });
 
@@ -151,7 +150,7 @@ describe("InvitationRouter", () => {
           organizationId: organization.id,
           email: "pending@example.com",
           role: "MEMBER",
-        })
+        }),
       ).rejects.toThrow("User already has a pending invitation");
     });
   });
@@ -161,7 +160,7 @@ describe("InvitationRouter", () => {
       const { caller, organization, user } = await createAdminTestContext();
 
       // Create some invitations
-      const invitation1 = await db.organizationInvitation.create({
+      await db.organizationInvitation.create({
         data: {
           email: "user1@example.com",
           organizationId: organization.id,
@@ -171,7 +170,7 @@ describe("InvitationRouter", () => {
         },
       });
 
-      const invitation2 = await db.organizationInvitation.create({
+      await db.organizationInvitation.create({
         data: {
           email: "user2@example.com",
           organizationId: organization.id,
@@ -324,7 +323,7 @@ describe("InvitationRouter", () => {
       await expect(
         caller.acceptInvitation({
           invitationId: expiredInvitation.id,
-        })
+        }),
       ).rejects.toThrow("Invitation has expired");
     });
 
@@ -362,7 +361,7 @@ describe("InvitationRouter", () => {
       await expect(
         caller.acceptInvitation({
           invitationId: invitation.id,
-        })
+        }),
       ).rejects.toThrow("This invitation is not for your email address");
     });
 
@@ -409,7 +408,7 @@ describe("InvitationRouter", () => {
       await expect(
         caller.acceptInvitation({
           invitationId: invitation.id,
-        })
+        }),
       ).rejects.toThrow("You are already a member of this organization");
     });
   });

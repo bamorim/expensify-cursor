@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { auth } from "~/server/auth";
-import { api, HydrateClient } from "~/trpc/server";
+import { HydrateClient } from "~/trpc/server";
 
 export default async function Home() {
   const session = await auth();
@@ -13,7 +13,7 @@ export default async function Home() {
           <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
             <span className="text-[hsl(280,100%,70%)]">Expense</span> Manager
           </h1>
-          
+
           <div className="text-center text-xl text-white/80">
             Streamlined expense reimbursement system for organizations
           </div>
@@ -55,7 +55,7 @@ export default async function Home() {
 
           {session?.user && (
             <div className="text-center">
-              <p className="text-lg text-white/80 mb-4">
+              <p className="mb-4 text-lg text-white/80">
                 Welcome to your expense management dashboard
               </p>
               <Link
