@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { Session } from "next-auth";
 import { api } from "~/trpc/react";
+import { InvitationAcceptance } from "../../organizations/_components/invitation-acceptance";
 
 interface DashboardContentProps {
   user: Session["user"];
@@ -22,6 +23,9 @@ export function DashboardContent({ user }: DashboardContentProps) {
           Manage your expenses and organization
         </p>
       </div>
+
+      {/* Pending Invitations */}
+      <InvitationAcceptance />
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -57,9 +61,10 @@ export function DashboardContent({ user }: DashboardContentProps) {
         ) : myOrganizations && myOrganizations.length > 0 ? (
           <div className="space-y-4">
             {myOrganizations.map((membership) => (
-              <div
+              <Link
                 key={membership.organization.id}
-                className="p-4 bg-white/5 rounded-lg border border-white/10"
+                href={`/organizations/${membership.organization.id}`}
+                className="block p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition"
               >
                 <div className="flex justify-between items-start">
                   <div>
@@ -75,15 +80,18 @@ export function DashboardContent({ user }: DashboardContentProps) {
                       Role: {membership.role} • Joined: {new Date(membership.joinedAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    membership.role === 'ADMIN' 
-                      ? 'bg-blue-500/20 text-blue-300' 
-                      : 'bg-green-500/20 text-green-300'
-                  }`}>
-                    {membership.role}
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      membership.role === 'ADMIN' 
+                        ? 'bg-blue-500/20 text-blue-300' 
+                        : 'bg-green-500/20 text-green-300'
+                    }`}>
+                      {membership.role}
+                    </span>
+                    <span className="text-white/40 text-xs">→</span>
+                  </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         ) : (

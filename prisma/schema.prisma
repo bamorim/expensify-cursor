@@ -27,6 +27,7 @@ model User {
     userSpecificPolicies   Policy[] @relation("UserSpecificPolicies")
     expenses               Expense[]
     policyApplications     PolicyApplication[]
+    sentInvitations      OrganizationInvitation[] @relation("SentInvitations")
     
     createdAt     DateTime  @default(now())
     updatedAt     DateTime  @updatedAt
@@ -44,6 +45,7 @@ model Organization {
     categories  ExpenseCategory[]
     policies    Policy[] @relation("OrganizationPolicies")
     expenses    Expense[]
+    invitations OrganizationInvitation[]
     
     createdAt   DateTime @default(now())
     updatedAt   DateTime @updatedAt
@@ -66,6 +68,39 @@ model OrganizationMember {
     @@unique([userId, organizationId])
     @@index([userId])
     @@index([organizationId])
+}
+
+// Organization invitations
+model OrganizationInvitation {
+    id             String   @id @default(cuid())
+    email          String
+    organizationId String
+    invitedBy      String   // User ID of who sent the invitation
+    role           UserRole @default(MEMBER)
+    status         InvitationStatus @default(PENDING)
+    expiresAt      DateTime
+    acceptedAt     DateTime?
+    
+    // Relationships
+    organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    invitedByUser User       @relation("SentInvitations", fields: [invitedBy], references: [id], onDelete: Cascade)
+    
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
+    
+    @@unique([email, organizationId, status])
+    @@index([email])
+    @@index([organizationId])
+    @@index([status])
+    @@index([expiresAt])
+}
+
+// Invitation status
+enum InvitationStatus {
+    PENDING
+    ACCEPTED
+    EXPIRED
+    CANCELLED
 }
 
 // User roles within organizations
